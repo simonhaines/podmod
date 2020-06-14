@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ButtonBar?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.text.Font?>
+<?import javafx.geometry.Insets?>
+
+<VBox xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <Label text="${controller.title}" />
+        <Label text="${controller.cursor}">
+          <font>
+            <Font size="36.0" style="bold" />
+          </font>
+        </Label>
+        <ButtonBar>
+          <buttons>
+            <Button text="&lt;-" disable="${!controller.canSkip}" />             
+            <Button text="${controller.playPauseLabel}" onAction="#onPlayPause" disable="${!controller.canPlay}" />
+            <Button text="${controller.recordPauseLabel}" onAction="#onRecordPause" disable="${!controller.canRecord}" />  
+            <Button text="-&gt;" disable="${!controller.canSkip}" />
+          </buttons>
+        </ButtonBar>
+    </children>
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+    </padding>
+</VBox>
+
