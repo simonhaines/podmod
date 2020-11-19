@@ -7,7 +7,8 @@ import java.time.Duration;
 import scalardata.podmod.audio.AudioFormats;
 
 public class PlayingState implements MixerState {
-	
+	// See https://github.com/philfrei/AudioCue
+		
 	private final Mixer mixer;
 	private final int channel;
 	private final byte[] frame;
@@ -22,24 +23,35 @@ public class PlayingState implements MixerState {
 		this.channel = channel;
 
 		// Read frames of 200ms
-		final long frameLength = AudioFormats.getLength(mixer.format, Duration.ofMillis(200));
+		final long frameLength = AudioFormats.getLength(mixer.format, Duration.ofMillis(100));
 		frame = new byte[(int)frameLength];
 	}
 
 	@Override
-	public MixerState tick() {
+	public void start() {
 		mixer.notifyStateChanged(channel, LineState.PLAYING);
-		
-		try {
-			// Engage the headphones
-			if (!mixer.headphones.isActive()) {
-				mixer.headphones.start();
-			}
 
-			// Save the current position for replaying
+		// Engage the headphones
+		if (!mixer.headphones.isActive()) {
+			mixer.headphones.start();
+		}
+
+		// Save the current position for replaying
+		try {
 			source = mixer.lines.get(channel);
 			savedPosition = source.getFilePointer();
-			nextPosition = -1;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		nextPosition = -1; 
+	}
+
+	@Override
+	public MixerState tick() {
+		try {
+			// TODO get a better algorithm for this (Duration)
+			final var threshold = mixer.headphones.getBufferSize() - 800;
 			
 			while (nextState == null) {
 				// Skip to a new position if required
@@ -55,9 +67,14 @@ public class PlayingState implements MixerState {
 					return new IdleState(mixer, channel);
 				} else {
 					try {
-						source.read(frame, 0, (int)amount);
-						mixer.headphones.write(frame, 0, (int)amount);
-						mixer.headphones.drain();
+						final int amountRead = source.read(frame, 0, (int)amount);
+						mixer.headphones.write(frame, 0, amountRead);
+						
+						//mixer.headphones.drain();
+						while (mixer.headphones.available() < threshold) {
+							Thread.yield();
+						}
+						
 						mixer.notifyPositionUpdated(channel, source.getFilePointer());
 					} catch (IOException ioe) {
 						mixer.notifyStateChanged(channel, LineState.ERROR);
@@ -97,6 +114,43 @@ public class PlayingState implements MixerState {
 	public void stop(int channel) {
 		if (this.channel == channel)
 			nextState = new IdleState(mixer, this.channel);
+	}
+
+	@Override
+	public void skipForward(int channel, long length) {
+		try {
+			if (channel == this.channel) {
+				var pos = source.getFilePointer() + length;
+				if (pos > source.length())
+					pos = source.length();
+				nextPosition = pos;
+			} else {
+				mixer.skipForward(channel, length);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void skipBackward(int channel, long length) {
+		try {
+			if (channel == this.channel) {
+				var pos = source.getFilePointer() - length;
+				if (pos < 0)
+					pos = 0;
+				nextPosition = pos;
+			} else {
+				mixer.skipBackward(channel, length);
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	@Override
+	public void punchIn(boolean preview) {
+		// Do nothing
 	}
 
 }

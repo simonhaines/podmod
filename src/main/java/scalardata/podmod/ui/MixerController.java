@@ -14,6 +14,9 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.beans.property.StringProperty;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.Pane;
 import scalardata.podmod.mix.LineState;
 import scalardata.podmod.mix.Mixer;
@@ -21,6 +24,7 @@ import scalardata.podmod.mix.MixerListener;
 
 public class MixerController {
 	
+	final StringProperty title = new SimpleStringProperty();
 	final StringProperty cursor = new SimpleStringProperty();
 	final BooleanProperty canPlay = new SimpleBooleanProperty();
 	final StringProperty playPauseLabel = new SimpleStringProperty();
@@ -31,8 +35,9 @@ public class MixerController {
 
 	final Mixer mixer;
 	final List<LineController> lines = new ArrayList<>();
-
-	LineState state;
+	
+	private boolean isPlaying;
+	private boolean isRecording;
 
 	public MixerController(Mixer mixer) {
 		this.mixer = mixer;
@@ -57,18 +62,24 @@ public class MixerController {
 	@FXML
 	public void initialize() {
 		// Set initial state
-		state = LineState.IDLE;
-		canPlay.set(true);
-		playPauseLabel.set("PLAY");
-		canRecord.set(true);
-		recordPauseLabel.set("REC");
-		canSkip.set(true);
-		cursor.set("0:00");
+		isPlaying = false;
+		setCanPlay(true);
+		setPlayPauseLabel("PLAY");
+		isRecording = false;
+		setCanRecord(true);
+		setRecordPauseLabel("REC");
+		setCanSkip(true);
+		setCursor("0:00");
+
+		// Hotkeys
+		
 		
 		// FIXME just open some recording
 		try {
 			var recording = Path.of("recording.pcm");
 			mixer.open(recording);
+			setCursor(durationToString(mixer.getLength(0)));
+			setTitle(recording.getFileName().toString());
 		} catch (IOException ioe) {
 			ioe.printStackTrace();
 		}
@@ -88,6 +99,16 @@ public class MixerController {
 			var loader = new FXMLLoader(getClass().getResource("Mixer.fxml"));
 			loader.setController(this);
 			view = loader.load();
+
+			// Add a listener to register accelerators when the scene is set
+			view.sceneProperty().addListener((observer, oldScene, newScene) -> {
+				if (oldScene != newScene) {
+					final var accelerators = newScene.getAccelerators();
+					accelerators.put(new KeyCodeCombination(KeyCode.P), () -> onPunchIn(true));
+					accelerators.put(new KeyCodeCombination(KeyCode.P, KeyCombination.SHIFT_DOWN),
+							() -> onPunchIn(false));
+				}
+			});
 		}
 		return view;
 	}
@@ -105,46 +126,105 @@ public class MixerController {
 		}
 	}
 	
+	private void onPunchIn(boolean preview) {
+		// No button wired up for this yet, but there may be one in future
+		mixer.startPunchIn(preview);
+	}
+	
 	@FXML
 	private void onPlayPause() {
-		if (state == LineState.IDLE)
-			mixer.startPlaying(0);
-		else if (state == LineState.PLAYING)
+		if (isPlaying) {
 			mixer.stopPlaying(0);
+		} else {
+			mixer.startPlaying(0);
+		}
 	}
 	
 	@FXML
 	private void onRecordPause() {
-		if (state == LineState.IDLE)
-			mixer.startRecording();
-		else if (state == LineState.RECORDING)
+		if (isRecording) {
 			mixer.stopRecording();
+		} else {
+			mixer.startRecording();
+		}
+	}
+	
+	@FXML
+	private void onSkipForward() {
+		mixer.skipForward(0, Duration.ofSeconds(1));
+	}
+	
+	@FXML
+	private void onSkipBackward() {
+		mixer.skipBackward(0, Duration.ofSeconds(1));
 	}
 	
 	private void handleStateChange(int id, LineState newState) {
-		if (id == 0 && newState == LineState.PLAYING) {
-			state = LineState.PLAYING;
-			setPlayPauseLabel("STOP");
+		switch (newState) {
+		case IDLE:
+			isPlaying = false;
 			setCanPlay(true);
-			setCanRecord(false);
-		} else if (id == 0 && newState == LineState.IDLE) {
-			state = LineState.IDLE;
 			setPlayPauseLabel("PLAY");
-			setCanPlay(true);
+			isRecording = false;
 			setCanRecord(true);
+			setRecordPauseLabel("REC");
 			setCanSkip(true);
-		} else if (id == 0 && newState == LineState.RECORDING) {
-			state = LineState.RECORDING;
-			setRecordPauseLabel("STOP");
+			break;
+		case PLAYING:
+			if (id == 0) {
+				// Master is playing
+				isPlaying = true;
+				setCanPlay(true);
+				setPlayPauseLabel("STOP");
+				isRecording = false;
+				setCanRecord(false);
+				setRecordPauseLabel("REC");
+				setCanSkip(true);
+			} else {
+				// Some other channel is playing
+				isPlaying = false;
+				setCanPlay(false);
+				setPlayPauseLabel("PLAY");
+				isRecording = false;
+				setCanRecord(false);
+				setRecordPauseLabel("REC");
+				setCanSkip(true);
+			}
+			break;
+		case RECORDING:
+			isPlaying = false;
 			setCanPlay(false);
+			setPlayPauseLabel("PLAY");
+			isRecording = true;
 			setCanRecord(true);
-			setCanSkip(true);
+			setRecordPauseLabel("STOP");
+			setCanSkip(false);
+			break;
+		case MIXING:
+			isPlaying = false;
+			setCanPlay(false);
+			setPlayPauseLabel("PLAY");
+			isRecording = true;
+			setCanRecord(true);
+			setRecordPauseLabel("STOP");
+			setCanSkip(false);
+			break;
+		default:
+			isPlaying = false;
+			setCanPlay(false);
+			setPlayPauseLabel("PLAY");
+			isRecording = false;
+			setCanRecord(false);
+			setRecordPauseLabel("REC");
+			setCursor("ERROR");
+			break;
 		}
 	}
 	
 	private String durationToString(Duration duration) {
 		var seconds = duration.getSeconds();
-		return String.format("%d:%02d", seconds / 60, seconds % 60);
+		var tenths = duration.getNano() / 1e8;
+		return String.format("%d:%02d.%d", seconds / 60, seconds % 60, (int)tenths);
 	}
 
 	public final StringProperty cursorProperty() {
@@ -235,5 +315,20 @@ public class MixerController {
 	public final void setCanSkip(final boolean canSkip) {
 		this.canSkipProperty().set(canSkip);
 	}
+
+	public final StringProperty titleProperty() {
+		return this.title;
+	}
+	
+
+	public final String getTitle() {
+		return this.titleProperty().get();
+	}
+	
+
+	public final void setTitle(final String title) {
+		this.titleProperty().set(title);
+	}
+	
 	
 }

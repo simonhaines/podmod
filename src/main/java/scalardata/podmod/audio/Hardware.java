@@ -13,10 +13,17 @@ public class Hardware {
         try {
         	var fmt = getAudioFormat();
             var info = new DataLine.Info(TargetDataLine.class, fmt);
-            if (AudioSystem.isLineSupported(info)) {
-            	var line = (TargetDataLine) AudioSystem.getLine(info);
-            	line.open();
-            	return line;
+
+            // Use the 'CODEC' mixer
+            for (var mi : AudioSystem.getMixerInfo()) {
+            	if (mi.getName().startsWith("CODEC")) {
+            		var mixer = AudioSystem.getMixer(mi);
+            		if (mixer.isLineSupported(info)) {
+            			var line = (TargetDataLine) mixer.getLine(info);
+            			line.open();
+            			return line;
+            		}
+            	}
             }
         } catch (LineUnavailableException ignored) { }
         return null;
@@ -24,15 +31,33 @@ public class Hardware {
 	
 	public static SourceDataLine getHeadphones() {
         try {
+        	// The headphones aren't attached to the default mixer, so
+        	// to capture the 'CODEC' mixer
         	var fmt = getAudioFormat();
             var info = new DataLine.Info(SourceDataLine.class, fmt);
-            if (AudioSystem.isLineSupported(info)) {
-            	var line = (SourceDataLine) AudioSystem.getLine(info);
-            	line.open();
-            	return line;
+            for (var mi : AudioSystem.getMixerInfo()) {
+            	if (mi.getName().startsWith("CODEC")) {
+            		var mixer = AudioSystem.getMixer(mi);
+            		if (mixer.isLineSupported(info)) {
+            			var line = (SourceDataLine) mixer.getLine(info);
+            			line.open();
+            			return line;
+            		}
+            	}
             }
         } catch (LineUnavailableException ignored) { }
         return null;
+	}
+	
+	public static void listSourceLines() {
+		var fmt = getAudioFormat();
+        var info = new DataLine.Info(SourceDataLine.class, fmt);
+        for (var mi : AudioSystem.getMixerInfo()) {
+        	var m = AudioSystem.getMixer(mi);
+        	if (m.isLineSupported(info)) {
+            	System.out.println(String.format("%s|%s|%s|%s", mi.getName(), mi.getDescription(), mi.getVendor(), mi.getVersion()));
+        	}
+        }
 	}
 
 	private static AudioFormat getAudioFormat() {

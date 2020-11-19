@@ -21,6 +21,6 @@ public class AudioFormats {
     			format.getChannels();
 		final var div = length / bytesPerSecond;
 		final var mod = length % bytesPerSecond;
-		return Duration.ofSeconds((long)Math.floor(div), (long)Math.floor(mod * 1e-9));
+		return Duration.ofSeconds((long)div, (long)Math.floor((mod / bytesPerSecond) * 1e9));
 	}
 }

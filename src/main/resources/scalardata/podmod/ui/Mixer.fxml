@@ -17,10 +17,10 @@
         </Label>
         <ButtonBar>
           <buttons>
-            <Button text="&lt;-" disable="${!controller.canSkip}" />             
+            <Button text="&lt;-" onAction="#onSkipBackward" disable="${!controller.canSkip}" />             
             <Button text="${controller.playPauseLabel}" onAction="#onPlayPause" disable="${!controller.canPlay}" />
             <Button text="${controller.recordPauseLabel}" onAction="#onRecordPause" disable="${!controller.canRecord}" />  
-            <Button text="-&gt;" disable="${!controller.canSkip}" />
+            <Button text="-&gt;" onAction="#onSkipForward" disable="${!controller.canSkip}" />
           </buttons>
         </ButtonBar>
     </children>

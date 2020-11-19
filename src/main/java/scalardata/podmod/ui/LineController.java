@@ -31,7 +31,8 @@ public class LineController {
 	final int id;
 	
 	private Pane view;
-	private LineState state;
+	private boolean isPlaying;
+	private boolean isMixing;
 
 	public LineController(Mixer mixer, int id, String name) {
 		this.mixer = mixer;
@@ -67,12 +68,13 @@ public class LineController {
 	@FXML
 	public void initialize() {
 		// Set initial state
-		state = LineState.IDLE;
-		canPlay.set(true);
-		playPauseLabel.set("PLAY");
-		canMix.set(false);
-		mixPauseLabel.set("MIX");
-		canSkip.set(true);
+		isPlaying = false;
+		setCanPlay(true);
+		setPlayPauseLabel("PLAY");
+		isMixing = false;
+		setCanMix(false);
+		setMixPauseLabel("MIX");
+		setCanSkip(true);
 
 		try {
 			cursor.set(durationToString(mixer.getPosition(id)));
@@ -89,7 +91,7 @@ public class LineController {
 	}
 	
 	public void onPlayPause(ActionEvent e) {
-		if (state == LineState.PLAYING) {
+		if (isPlaying) {
 			mixer.stopPlaying(id);
 		} else {
 			mixer.startPlaying(id);
@@ -97,7 +99,7 @@ public class LineController {
 	}
 	
 	public void onMixPause(ActionEvent e) {
-		if (state == LineState.MIXING) {
+		if (isMixing) {
 			// TODO mixer.stopMixing(id);
 		} else {
 			// TODO mixer.startMixing(id);
@@ -105,7 +107,6 @@ public class LineController {
 	}
 	
 	private void onError() {
-		state = LineState.ERROR;
 		cursor.set("ERROR");
 		canPlay.set(false);
 		canMix.set(false);
@@ -113,37 +114,84 @@ public class LineController {
 	}
 	
 	private void handleStateChange(int line, LineState newState) {
-		if (line == id) {
-			// State change to this line
-			state = newState;
-			switch (state) {
-			case IDLE:
-				canPlay.set(true);
-				canMix.set(true);
-				canSkip.set(true);
-				break;
-			case RECORDING:
-				canPlay.set(false);
-				canMix.set(true);
-				canSkip.set(true);
-				break;
-			case MIXING:
-				canPlay.set(true);
-				canMix.set(false);
-				canSkip.set(false);
-				break;
-			case PLAYING:
-				canPlay.set(true);
-				canMix.set(false);
-				canSkip.set(true);
-				break;
-			case ERROR:
-				onError();
-				break;
+		switch (newState) {
+		case IDLE:
+			// The mixer is going idle
+			isPlaying = false;
+			setCanPlay(true);
+			setPlayPauseLabel("PLAY");
+			isMixing = false;
+			setCanMix(false);
+			setMixPauseLabel("MIX");
+			setCanSkip(true);
+			break;
+		case RECORDING:
+			if (line == id) {
+				// This channel is being recorded (spliced)
+				isPlaying = true;
+				setCanPlay(true);
+				setPlayPauseLabel("PAUSE");
+				isMixing = false;
+				setCanMix(false);
+				setMixPauseLabel("MIX");
+				setCanSkip(false);
+			} else {
+				// Some other channel is being recorded (spliced)
+				isPlaying = false;
+				setCanPlay(false);
+				setPlayPauseLabel("PLAY");
+				isMixing = false;
+				setCanMix(false);
+				setMixPauseLabel("MIX");
+				setCanSkip(true);
 			}
+			break;
+		case MIXING:
+			if (line == id) {
+				// This channel is being mixed
+				isPlaying = false;
+				setCanPlay(false);
+				setPlayPauseLabel("PLAY");
+				isMixing = true;
+				setCanMix(true);
+				setMixPauseLabel("PAUSE");
+				setCanSkip(false);
+			} else {
+				// Some other channel is being mixed
+				isPlaying = false;
+				setCanPlay(false);
+				setPlayPauseLabel("PLAY");
+				isMixing = false;
+				setCanMix(false);
+				setMixPauseLabel("MIX");
+				setCanSkip(false);
+			}
+			break;
+		case PLAYING:
+			if (line == id) {
+				// This channel is being played
+				isPlaying = true;
+				setCanPlay(true);
+				setPlayPauseLabel("PAUSE");
+				isMixing = false;
+				setCanMix(false);
+				setMixPauseLabel("MIX");
+				setCanSkip(true);
+			} else {
+				// Some other channel is being played
+				isPlaying = false;
+				setCanPlay(true);
+				setPlayPauseLabel("PLAY");
+				isMixing = false;
+				setCanMix(false);
+				setMixPauseLabel("MIX");
+				setCanSkip(true);
+			}
+			break;
+		default:
+			onError();
+			break;
 		}
-		// TODO handle changes to other lines:
-		// master starts mixing, master starts playing, etc
 	}
 
 	private String durationToString(Duration duration) {

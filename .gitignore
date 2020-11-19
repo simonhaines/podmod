@@ -3,4 +3,5 @@
 *.jar
 hs_err_pid*
 
+.settings/
 target/

@@ -7,6 +7,11 @@ public class ErrorState implements MixerState {
 	ErrorState(Exception exception) {
 		this.exception = exception;
 	}
+	
+	@Override
+	public void start() {
+		throw new RuntimeException(String.format("Error: %s", exception.getMessage()));
+	}
 
 	@Override
 	public MixerState tick() {
@@ -30,6 +35,21 @@ public class ErrorState implements MixerState {
 
 	@Override
 	public void stop(int channel) {
+		throw new RuntimeException(String.format("Error: %s", exception.getMessage()));
+	}
+
+	@Override
+	public void skipForward(int channel, long length) {
+		throw new RuntimeException(String.format("Error: %s", exception.getMessage()));
+	}
+
+	@Override
+	public void skipBackward(int channel, long length) {
+		throw new RuntimeException(String.format("Error: %s", exception.getMessage()));
+	}
+
+	@Override
+	public void punchIn(boolean preview) {
 		throw new RuntimeException(String.format("Error: %s", exception.getMessage()));
 	}
 

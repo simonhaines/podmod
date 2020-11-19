@@ -86,6 +86,28 @@ public class Mixer implements Closeable, AutoCloseable {
 		currentState.stop(channel);
 	}
 	
+	public void startMixing(int channel) {
+		currentState.mix(channel);
+	}
+	
+	public void stopMixing(int channel) {
+		currentState.stop(channel);
+	}
+	
+	public void startPunchIn(boolean preview) {
+		currentState.punchIn(preview);
+	}
+	
+	public void skipForward(int channel, Duration amount) {
+		final var length = AudioFormats.getLength(format, amount);
+		currentState.skipForward(channel, length);
+	}
+	
+	public void skipBackward(int channel, Duration amount) {
+		final var length = AudioFormats.getLength(format, amount);
+		currentState.skipBackward(channel, length);
+	}
+	
 	void notifyStateChanged(int line, LineState state) {
 		listeners.stream().forEach(l -> l.stateChanged(line, state));
 	}
@@ -96,8 +118,13 @@ public class Mixer implements Closeable, AutoCloseable {
 	}
 	
 	void processor() {
+		currentState.start();
 		while (!(currentState instanceof ErrorState)) {
-			currentState = currentState.tick();
+			final var newState = currentState.tick();
+			if (newState != currentState) {
+				currentState = newState;
+				currentState.start();
+			}
 		}
 	}
 
@@ -105,6 +132,38 @@ public class Mixer implements Closeable, AutoCloseable {
 	public void close() throws IOException {
 		if (mixingLoop != null)
 			mixingLoop.cancel(true);
+		headphones.close();
+		microphone.close();
+		for (var line : lines) {
+			line.close();
+		}
 	}
 
+	/** Default implementation */
+	void skipForward(int channel, long length) {
+		try {
+			final var line = lines.get(channel);
+			var pos = line.getFilePointer() + length;
+			if (pos > line.length())
+				pos = line.length();
+			line.seek(pos);
+			notifyPositionUpdated(channel, pos);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	/** Default implementation */
+	void skipBackward(int channel, long length) {
+		try {
+			final var line = lines.get(channel);
+			var pos = line.getFilePointer() - length;
+			if (pos < 0)
+				pos = 0;
+			line.seek(pos);
+			notifyPositionUpdated(channel, pos);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 }

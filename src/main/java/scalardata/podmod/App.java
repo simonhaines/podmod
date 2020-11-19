@@ -24,6 +24,9 @@ public class App extends Application {
     	final var mixer = new Mixer(microphone.getFormat(), microphone, headphones);
     	final var controller = new MixerController(mixer);
         
+    	Hardware.listSourceLines();
+    	
+    	
     	try {
             scene = new Scene(controller.getView(), 640, 480);
             stage.setScene(scene);

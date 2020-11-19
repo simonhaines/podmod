@@ -10,10 +10,14 @@ public class IdleState implements MixerState {
 		this.mixer = mixer;
 		this.channel = channel;
 	}
+	
+	@Override
+	public void start() {
+		mixer.notifyStateChanged(channel, LineState.IDLE);
+	}
 
 	@Override
 	public MixerState tick() {
-		mixer.notifyStateChanged(channel, LineState.IDLE);
 		synchronized (this) {
 			try {
 				wait();
@@ -50,4 +54,23 @@ public class IdleState implements MixerState {
 		// Do nothing
 	}
 
+	@Override
+	public void skipForward(int channel, long length) {
+		// Always succeed
+		mixer.skipForward(channel, length);
+	}
+
+	@Override
+	public void skipBackward(int channel, long length) {
+		// Always succeed
+		mixer.skipBackward(channel, length);
+	}
+
+	@Override
+	public void punchIn(boolean preview) {
+		synchronized (this) {
+			nextState = new PunchInState(mixer, preview);
+			notify();
+		}
+	}
 }

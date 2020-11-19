@@ -21,6 +21,11 @@ public class MixingState implements MixerState {
 		final long frameLength = AudioFormats.getLength(mixer.format, Duration.ofMillis(2000));
 		frame = new byte[(int)frameLength];
 	}
+	
+	@Override
+	public void start() {
+		mixer.notifyStateChanged(channel, LineState.MIXING);
+	}
 
 	@Override
 	public MixerState tick() {
@@ -75,6 +80,23 @@ public class MixingState implements MixerState {
 		if (channel == this.channel) {
 			nextState = new RecordingState(mixer);
 		}
+	}
+
+	@Override
+	public void skipForward(int channel, long length) {
+		if (channel != this.channel)
+			mixer.skipForward(channel, length);
+	}
+
+	@Override
+	public void skipBackward(int channel, long length) {
+		if (channel != this.channel)
+			mixer.skipBackward(channel, length);
+	}
+
+	@Override
+	public void punchIn(boolean preview) {
+		// Do nothing
 	}
 
 }
