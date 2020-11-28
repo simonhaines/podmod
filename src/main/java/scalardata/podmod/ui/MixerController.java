@@ -64,10 +64,10 @@ public class MixerController {
 		// Set initial state
 		isPlaying = false;
 		setCanPlay(true);
-		setPlayPauseLabel("PLAY");
+		setPlayPauseLabel("⏵");
 		isRecording = false;
 		setCanRecord(true);
-		setRecordPauseLabel("REC");
+		setRecordPauseLabel("⏺");
 		setCanSkip(true);
 		setCursor("0:00");
 
@@ -164,10 +164,10 @@ public class MixerController {
 		case IDLE:
 			isPlaying = false;
 			setCanPlay(true);
-			setPlayPauseLabel("PLAY");
+			setPlayPauseLabel("⏵");
 			isRecording = false;
 			setCanRecord(true);
-			setRecordPauseLabel("REC");
+			setRecordPauseLabel("⏺");
 			setCanSkip(true);
 			break;
 		case PLAYING:
@@ -175,47 +175,47 @@ public class MixerController {
 				// Master is playing
 				isPlaying = true;
 				setCanPlay(true);
-				setPlayPauseLabel("STOP");
+				setPlayPauseLabel("⏹");
 				isRecording = false;
 				setCanRecord(false);
-				setRecordPauseLabel("REC");
+				setRecordPauseLabel("⏺");
 				setCanSkip(true);
 			} else {
 				// Some other channel is playing
 				isPlaying = false;
 				setCanPlay(false);
-				setPlayPauseLabel("PLAY");
+				setPlayPauseLabel("⏵");
 				isRecording = false;
 				setCanRecord(false);
-				setRecordPauseLabel("REC");
+				setRecordPauseLabel("⏺");
 				setCanSkip(true);
 			}
 			break;
 		case RECORDING:
 			isPlaying = false;
 			setCanPlay(false);
-			setPlayPauseLabel("PLAY");
+			setPlayPauseLabel("⏵");
 			isRecording = true;
 			setCanRecord(true);
-			setRecordPauseLabel("STOP");
+			setRecordPauseLabel("⏹");
 			setCanSkip(false);
 			break;
 		case MIXING:
 			isPlaying = false;
 			setCanPlay(false);
-			setPlayPauseLabel("PLAY");
+			setPlayPauseLabel("⏵");
 			isRecording = true;
 			setCanRecord(true);
-			setRecordPauseLabel("STOP");
+			setRecordPauseLabel("⏹");
 			setCanSkip(false);
 			break;
 		default:
 			isPlaying = false;
 			setCanPlay(false);
-			setPlayPauseLabel("PLAY");
+			setPlayPauseLabel("⏵");
 			isRecording = false;
 			setCanRecord(false);
-			setRecordPauseLabel("REC");
+			setRecordPauseLabel("⏺");
 			setCursor("ERROR");
 			break;
 		}

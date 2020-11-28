@@ -12,12 +12,8 @@ public class IdleState implements MixerState {
 	}
 	
 	@Override
-	public void start() {
+	public MixerState process() {
 		mixer.notifyStateChanged(channel, LineState.IDLE);
-	}
-
-	@Override
-	public MixerState tick() {
 		synchronized (this) {
 			try {
 				wait();
@@ -25,6 +21,14 @@ public class IdleState implements MixerState {
 			} catch (InterruptedException ie) {
 				return new ErrorState(ie);
 			}
+		}
+	}
+
+	@Override
+	public void terminate() {
+		synchronized (this) {
+			nextState = null;
+			notify();
 		}
 	}
 

@@ -12,6 +12,7 @@ public class MixingState implements MixerState {
 
 	private byte[] frame;
 	private MixerState nextState;
+	private boolean terminating = false;
 	
 	MixingState(Mixer mixer, int channel) {
 		this.mixer = mixer;
@@ -23,41 +24,34 @@ public class MixingState implements MixerState {
 	}
 	
 	@Override
-	public void start() {
+	public MixerState process() {
 		mixer.notifyStateChanged(channel, LineState.MIXING);
-	}
+		while (!terminating) {
+			if (nextState != null)
+				return nextState;
+			
+			try {
+				final var line = mixer.lines.get(channel);
+				final var remaining = line.length() - line.getFilePointer();
+				if (remaining == 0) {
+					return new RecordingState(mixer);
+				}
 
-	@Override
-	public MixerState tick() {
-		if (nextState != null) {
-			mixer.headphones.drain();
-			mixer.headphones.stop();
-			return nextState;
-		}
-		
-		if (!mixer.headphones.isActive()) {
-			mixer.headphones.flush();
-			mixer.headphones.start();
-		}
-		
-		try {
-			final var line = mixer.lines.get(channel);
-			final var remaining = line.length() - line.getFilePointer();
-			if (remaining == 0) {
-				return new RecordingState(mixer);
+				// Read from line
+				final var length = (int)Math.min(remaining, frame.length);
+				line.read(frame, 0, length);
+
+				// Write to headphones and master
+				mixer.headphones.write(frame, 0, length);
+				mixer.lines.get(0).write(frame, 0, length);
+				return this;
+			} catch (IOException ioe) {
+				return new ErrorState(ioe);
 			}
-
-			// Read from line
-			final var length = (int)Math.min(remaining, frame.length);
-			line.read(frame, 0, length);
-
-			// Write to headphones and master
-			mixer.headphones.write(frame, 0, length);
-			mixer.lines.get(0).write(frame, 0, length);
-			return this;
-		} catch (IOException ioe) {
-			return new ErrorState(ioe);
 		}
+		
+		// Terminating
+		return null;
 	}
 
 	@Override
@@ -99,4 +93,8 @@ public class MixingState implements MixerState {
 		// Do nothing
 	}
 
+	@Override
+	public void terminate() {
+		terminating = true;
+	}
 }

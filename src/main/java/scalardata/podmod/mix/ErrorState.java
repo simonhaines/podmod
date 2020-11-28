@@ -9,12 +9,12 @@ public class ErrorState implements MixerState {
 	}
 	
 	@Override
-	public void start() {
+	public void terminate() {
 		throw new RuntimeException(String.format("Error: %s", exception.getMessage()));
 	}
 
 	@Override
-	public MixerState tick() {
+	public MixerState process() {
 		throw new RuntimeException(String.format("Error: %s", exception.getMessage()));
 	}
 

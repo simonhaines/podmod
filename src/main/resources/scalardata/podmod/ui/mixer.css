@@ -1,0 +1,14 @@
+#cursor {
+	-fx-font-size: 36pt;
+	-fx-font-weight: bold;
+}
+
+.button-panel {
+	-fx-spacing: 10px;
+	-fx-alignment: center;
+}
+
+.action-button {
+	-fx-font-size: 2em;
+	-fx-label-padding: -5px;
+}

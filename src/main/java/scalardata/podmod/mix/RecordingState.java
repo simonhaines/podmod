@@ -16,6 +16,7 @@ public class RecordingState implements MixerState {
 	private final AudioInputStream source;
 	private final RandomAccessFile master;
 	private MixerState nextState;
+	private boolean terminating = false;
 	
 	RecordingState(Mixer mixer) {
 		this.mixer = mixer;
@@ -33,47 +34,43 @@ public class RecordingState implements MixerState {
 	}
 	
 	@Override
-	public void start() {
-		// Start the microphone
+	public MixerState process() {
+		// Clear microphone input
 		mixer.microphone.flush();
-		if (!mixer.microphone.isActive()) {
-			mixer.microphone.start();
-		}
 
 		// Trim the master file to the current location
 		try {
 			master.setLength(master.getFilePointer());
 			mixer.notifyPositionUpdated(0, master.getFilePointer());
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return new ErrorState(e);
 		}
-		mixer.notifyStateChanged(0, LineState.RECORDING);
-	}
 
-	@Override
-	public MixerState tick() {
-		if (nextState != null) {
-			if (nextState instanceof IdleState) {
-				mixer.microphone.stop();
-				try {
-					// Trim the master file to get rid of excess capacity
-					mixer.lines.get(0).setLength(master.getFilePointer());
-				} catch (IOException ioe) {
-					return new ErrorState(ioe);
+		mixer.notifyStateChanged(0, LineState.RECORDING);
+		while (true) {
+			if (terminating) return null;
+			if (nextState != null) {
+				if (nextState instanceof IdleState) {
+					mixer.microphone.stop();
+					try {
+						// Trim the master file to get rid of excess capacity
+						mixer.lines.get(0).setLength(master.getFilePointer());
+					} catch (IOException ioe) {
+						return new ErrorState(ioe);
+					}
 				}
+				return nextState;
 			}
-			return nextState;
-		}
-		
-		try {
-			final var length = source.read(frame);
- 			ensureCapacity(length);
-			master.write(frame, 0, length);
-			mixer.notifyPositionUpdated(0, master.getFilePointer());
-			return this;
-		} catch (IOException ioe) {
-			return new ErrorState(ioe);
+			
+			try {
+				final var length = source.read(frame);
+	 			ensureCapacity(length);
+				master.write(frame, 0, length);
+				mixer.notifyPositionUpdated(0, master.getFilePointer());
+				return this;
+			} catch (IOException ioe) {
+				return new ErrorState(ioe);
+			}
 		}
 	}
 
@@ -123,6 +120,11 @@ public class RecordingState implements MixerState {
 	@Override
 	public void punchIn(boolean preview) {
 		// Do nothing
+	}
+
+	@Override
+	public void terminate() {
+		terminating = true;
 	}
 
 }

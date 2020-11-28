@@ -7,8 +7,9 @@ import java.io.RandomAccessFile;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.SourceDataLine;
@@ -25,8 +26,8 @@ public class Mixer implements Closeable, AutoCloseable {
 	final ArrayList<RandomAccessFile> lines = new ArrayList<>();
 	
 	private final ArrayList<MixerListener> listeners = new ArrayList<>();
+	private ExecutorService executor;
 	private MixerState currentState;
-	private Future<?> mixingLoop;
 
 	public Mixer(AudioFormat format, TargetDataLine microphone, SourceDataLine headphones) {
 		this.format = format;
@@ -49,8 +50,8 @@ public class Mixer implements Closeable, AutoCloseable {
 		lines.add(master);
 		
 		// Start the recording/mixing loop
-		final var executor = Executors.newSingleThreadExecutor();
-		mixingLoop = executor.submit(this::processor);
+		executor = Executors.newSingleThreadExecutor();
+		executor.submit(this::processor);
 	}
 	
 	public int addClip(Path path) throws FileNotFoundException {
@@ -118,20 +119,26 @@ public class Mixer implements Closeable, AutoCloseable {
 	}
 	
 	void processor() {
-		currentState.start();
 		while (!(currentState instanceof ErrorState)) {
-			final var newState = currentState.tick();
-			if (newState != currentState) {
-				currentState = newState;
-				currentState.start();
-			}
+			currentState = currentState.process();
+			if (currentState == null)
+				return;
 		}
 	}
 
 	@Override
 	public void close() throws IOException {
-		if (mixingLoop != null)
-			mixingLoop.cancel(true);
+		// Terminate the current mixer state
+		currentState.terminate();
+		
+		// Shut down the executor and wait for mixing states to exit
+		try {
+			executor.shutdown();
+			executor.awaitTermination(200, TimeUnit.MILLISECONDS);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+
 		headphones.close();
 		microphone.close();
 		for (var line : lines) {

@@ -17,6 +17,7 @@ public class PlayingState implements MixerState {
 	private MixerState nextState;
 	private long savedPosition;
 	private long nextPosition;
+	private boolean terminating = false;
 	
 	PlayingState(Mixer mixer, int channel) {
 		this.mixer = mixer;
@@ -28,7 +29,7 @@ public class PlayingState implements MixerState {
 	}
 
 	@Override
-	public void start() {
+	public MixerState process() {
 		mixer.notifyStateChanged(channel, LineState.PLAYING);
 
 		// Engage the headphones
@@ -41,19 +42,18 @@ public class PlayingState implements MixerState {
 			source = mixer.lines.get(channel);
 			savedPosition = source.getFilePointer();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			return new ErrorState(e);
 		}
 		nextPosition = -1; 
-	}
 
-	@Override
-	public MixerState tick() {
 		try {
 			// TODO get a better algorithm for this (Duration)
 			final var threshold = mixer.headphones.getBufferSize() - 800;
 			
 			while (nextState == null) {
+				// Exit if terminating
+				if (terminating) return null;
+				
 				// Skip to a new position if required
 				if (nextPosition != -1) {
 					source.seek(nextPosition);
@@ -83,7 +83,6 @@ public class PlayingState implements MixerState {
 				}
 			}
 			return nextState;
-
 		} catch (IOException ioe) {
 			return new ErrorState(ioe);
 		}
@@ -153,4 +152,8 @@ public class PlayingState implements MixerState {
 		// Do nothing
 	}
 
+	@Override
+	public void terminate() {
+		terminating = true;
+	}
 }

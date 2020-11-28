@@ -1,0 +1,13 @@
+Notes
+
+A better noise gate
+https://ro-che.info/articles/2019-01-12-better-noise-gate
+https://github.com/feuerbach/noise-gate
+
+Multiband compression, see:
+https://www.musicianonamission.com/vocal-compression-how-to-compress-vocals/
+
+Here’s what you should aim for:
+    Averaging around -18dBFS
+    Peaking around -10dBFS
+    Never peaking higher than -6dBFS

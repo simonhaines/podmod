@@ -2,15 +2,15 @@ package scalardata.podmod.mix;
 
 public interface MixerState {
 	/**
-	 * Start the mixer state.
-	 */
-	void start();
-
-	/**
 	 * Process the current state.
-	 * @return The next state to process.
+	 * @return The next state to process, or null if terminating.
 	 */
-	MixerState tick();
+	MixerState process();
+	
+	/**
+	 * Stop processing the current state, clean up resources and finish.
+	 */
+	void terminate();
 
 	/**
 	 * Start recording to the master track.

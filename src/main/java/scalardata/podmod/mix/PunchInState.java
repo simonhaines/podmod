@@ -13,6 +13,7 @@ public class PunchInState implements MixerState {
 	private final RandomAccessFile master;
 	private final byte[] frame;
 	private MixerState nextState;
+	private boolean terminating;
 
 	PunchInState(Mixer mixer, boolean preview) {
 		this.mixer = mixer;
@@ -24,15 +25,12 @@ public class PunchInState implements MixerState {
 		frame = new byte[(int)frameLength];
 		
 		nextState = null;
+		terminating = false;
 	}
 
 	@Override
-	public void start() {
+	public MixerState process() {
 		mixer.notifyStateChanged(0, LineState.PLAYING);
-	}
-
-	@Override
-	public MixerState tick() {
 		try {
 			// Take the current pointer in the master file and
 			// rewind 3s or to the start, whichever is less
@@ -44,6 +42,8 @@ public class PunchInState implements MixerState {
 			
 			// Start the playing loop
 			while (nextState == null) {
+				if (terminating) return null;
+				
 				// Start recording or go idle if we've reached the punch point
 				final var remaining = punchPoint - master.getFilePointer();
 				final var amount = Math.min(remaining, frame.length);
@@ -108,6 +108,11 @@ public class PunchInState implements MixerState {
 	@Override
 	public void punchIn(boolean preview) {
 		// Already punching in, do nothing
+	}
+
+	@Override
+	public void terminate() {
+		terminating = true;
 	}
 
 }
